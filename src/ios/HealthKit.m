@@ -559,6 +559,13 @@ static NSString *const HKPluginKeyUUID = @"UUID";
 
         if ([elem isEqual:@"HKWorkoutTypeIdentifier"]) {
             type = [HKObjectType workoutType];
+        } else if ([elem isEqual:@"HKElectrocardiogramType"]) {
+            if (@available(iOS 14.0, *)) {
+                type = [HKObjectType electrocardiogramType];
+            } else {
+                // Fallback on earlier versions
+                type = [HealthKit getHKObjectType:elem];
+            }
         } else {
             type = [HealthKit getHKObjectType:elem];
         }
