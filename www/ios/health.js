@@ -92,7 +92,7 @@ units['resp_rate'] = 'count/min';
 units['oxygen_saturation'] = '%';
 units['vo2max'] = 'ml/(kg*min)';
 units['temperature'] = 'degC';
-units['electrocardiogram'] = 'n/a'; // TODO: Watch this stuff
+units['electrocardiogram'] = 'mV';
 
 // just a wrapper for querying Telerik's if HK is available
 Health.prototype.isAvailable = function (success, error) {
@@ -350,6 +350,13 @@ Health.prototype.query = function (opts, onSuccess, onError) {
     onError('unknown data type ' + opts.dataType);
   }
 };
+
+Health.prototype.queryECG = function(opts, onSuccess, onError) {
+  window.plugins.healthkit.queryECGSampleType(opts, function(ecgObject){
+    console.log(ecgObject);
+    onSuccess(ecgObject);
+  }, onError);
+}
 
 Health.prototype.queryAggregated = function (opts, onSuccess, onError) {
   if ((opts.dataType !== 'steps') && (opts.dataType !== 'distance') &&

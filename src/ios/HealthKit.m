@@ -230,6 +230,10 @@ static NSString *const HKPluginKeyUUID = @"UUID";
         return [HKObjectType workoutType];
     }
 
+    if([elem isEqualToString:@"HKElectrocardiogramType"]) {
+        return [HKObjectType electrocardiogramType];
+    }
+
     // leave this here for if/when apple adds other sample types
     return type;
 
@@ -1435,6 +1439,18 @@ static NSString *const HKPluginKeyUUID = @"UUID";
 
                                                                           }
 
+                                                                          if (@available(iOS 14.0, *)) {
+                                                                              if ([sample isKindOfClass:[HKElectrocardiogram class]]) {
+                                                                                  HKElectrocardiogram *esample = (HKElectrocardiogram *) sample;
+                                                                                  [entry setValue:@(esample.symptomsStatus) forKey:@"symptomsStatus"];
+                                                                                  [entry setValue:@(esample.classification) forKey:@"classification"];
+                                                                                  [entry setValue:@([esample.averageHeartRate doubleValueForUnit:[HKUnit unitFromString:@"count/min"]]) forKey:@"averageHeartRate"];
+                                                                              }
+
+                                                                          } else {
+                                                                              // Fallback on earlier versions
+                                                                          }
+
                                                                           [finalResults addObject:entry];
                                                                       }
 
@@ -1442,10 +1458,13 @@ static NSString *const HKPluginKeyUUID = @"UUID";
                                                                           CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:finalResults];
                                                                           [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
                                                                       });
+
                                                                   }
+
                                                               }];
 
             [[HealthKit sharedHealthStore] executeQuery:query];
+
         } else {
             dispatch_sync(dispatch_get_main_queue(), ^{
                 [HealthKit triggerErrorCallbackWithMessage:error.localizedDescription command:command delegate:bSelf.commandDelegate];
@@ -1453,6 +1472,109 @@ static NSString *const HKPluginKeyUUID = @"UUID";
         }
     }];
 }
+
+
+/**
+  * Query a specified sample of ECG data
+  *
+  * @param command *CDVInvokedUrlCommand
+ */
+- (void)queryECGSampleType:(CDVInvokedUrlCommand *)command {
+
+    if (@available(iOS 14.0, *)) {
+
+        NSDictionary *args = command.arguments[0];
+        NSUUID *sampleID = [[NSUUID alloc] initWithUUIDString:args[HKPluginKeyUUID]];
+        NSPredicate *uuidPredicate = [HKQuery predicateForObjectWithUUID:sampleID];
+        HKSampleType *type = [HKObjectType electrocardiogramType];
+        NSSet *requestTypes = [NSSet setWithObjects:type, nil];
+        NSUInteger limit = ((args[@"limit"] != nil) ? [args[@"limit"] unsignedIntegerValue] : 1);
+        NSString *endKey = HKSampleSortIdentifierEndDate;
+        BOOL ascending = (args[@"ascending"] != nil && [args[@"ascending"] boolValue]);
+        NSSortDescriptor *endDateSort = [NSSortDescriptor sortDescriptorWithKey:endKey ascending:ascending];
+
+        [[HealthKit sharedHealthStore] requestAuthorizationToShareTypes:nil readTypes:requestTypes completion:^(BOOL success, NSError *error) {
+            __block HealthKit *bSelf = self;
+            if (success) {
+                HKSampleQuery *query = [[HKSampleQuery alloc] initWithSampleType:type
+                                                              predicate:uuidPredicate
+                                                              limit:limit
+                                                              sortDescriptors:@[endDateSort]
+                                                              resultsHandler:^(HKSampleQuery *sampleQuery,
+                                                                               NSArray *results,
+                                                                               NSError *innerError) {
+                                                                                  if (innerError != nil) {
+                                                                                      dispatch_sync(dispatch_get_main_queue(), ^{
+                                                                                          [HealthKit triggerErrorCallbackWithMessage:innerError.localizedDescription command:command delegate:bSelf.commandDelegate];
+                                                                                      });
+                                                                                  } else {
+                                                                                      for (HKSample *sample in results) {
+                                                                                          if ([sample isKindOfClass:[HKElectrocardiogram class]]) {
+
+                                                                                              NSMutableDictionary *entry = [NSMutableDictionary dictionary];
+
+                                                                                              HKElectrocardiogram *esample = (HKElectrocardiogram *) sample;
+
+                                                                                              [entry setValue:@(esample.symptomsStatus) forKey:@"symptomsStatus"];
+                                                                                              [entry setValue:@(esample.classification) forKey:@"classification"];
+                                                                                              [entry setValue:@([esample.averageHeartRate doubleValueForUnit:[HKUnit unitFromString:@"count/min"]]) forKey:@"averageHeartRate"];
+
+                                                                                              NSMutableArray *ecgVoltageReadings = [[NSMutableArray alloc] initWithCapacity:esample.numberOfVoltageMeasurements];
+
+
+                                                                                              HKElectrocardiogramQuery *queryElectrocardiogram = [[HKElectrocardiogramQuery alloc]
+                                                                                                                                                    initWithElectrocardiogram:esample
+                                                                                                                                                    dataHandler:^(HKElectrocardiogramQuery * _Nonnull queryElectrocardiogram, HKElectrocardiogramVoltageMeasurement * _Nullable voltageMeasurement, BOOL done, NSError * _Nullable error) {
+                                                                                                    if (error) {
+                                                                                                        NSLog(@"error");
+                                                                                                    } else {
+                                                                                                        if(!done){
+                                                                                                            NSMutableDictionary *voltageReading = [NSMutableDictionary dictionary];
+                                                                                                            HKQuantity *voltageReadingQuantity = [voltageMeasurement quantityForLead:HKElectrocardiogramLeadAppleWatchSimilarToLeadI];
+
+                                                                                                            NSNumber *startTime = [NSNumber numberWithFloat:voltageMeasurement.timeSinceSampleStart];
+                                                                                                            NSString *startTimeString = [startTime stringValue];
+                                                                                                            [voltageReading setValue:startTimeString forKey:@"name"];
+                                                                                                            NSNumber *voltageValueRaw = [NSNumber numberWithFloat:[voltageReadingQuantity doubleValueForUnit:[HKUnit unitFromString:@"mV"]]];
+                                                                                                            double voltageValueDouble = [voltageValueRaw doubleValue];
+                                                                                                            [voltageReading setValue:[NSNumber numberWithDouble:voltageValueDouble] forKey:@"value"];
+
+                                                                                                            [ecgVoltageReadings addObject:voltageReading];
+
+                                                                                                        } else {
+                                                                                                            [entry setValue:ecgVoltageReadings forKey:@"sampleVoltageReadings"];
+                                                                                                            dispatch_sync(dispatch_get_main_queue(), ^{
+                                                                                                                CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:entry];
+                                                                                                                [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
+                                                                                                            });
+                                                                                                        }
+                                                                                                    }
+                                                                                                }];
+                                                                                              [[HealthKit sharedHealthStore] executeQuery:queryElectrocardiogram];
+
+                                                                                          }
+
+                                                                                      }
+
+                                                                                  }
+                                                              }];
+
+                [[HealthKit sharedHealthStore] executeQuery:query];
+            } else {
+                dispatch_sync(dispatch_get_main_queue(), ^{
+                    [HealthKit triggerErrorCallbackWithMessage:error.localizedDescription command:command delegate:bSelf.commandDelegate];
+                });
+            }
+        }];
+    } else {
+        dispatch_sync(dispatch_get_main_queue(), ^{
+            CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsBool:FALSE];
+            [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
+        });
+    }
+
+}
+
 
 /**
  * Query a specified sample type using an aggregation

@@ -116,6 +116,13 @@
 - (void) querySampleType:(CDVInvokedUrlCommand*)command;
 
 /**
+  * Query a specified sample of ECG data
+  *
+  * @param command *CDVInvokedUrlCommand
+ */
+- (void) queryECGSampleType:(CDVInvokedUrlCommand*)command;
+
+/**
  * Query a specified sample type using an aggregation
  *
  * @param command *CDVInvokedUrlCommand
