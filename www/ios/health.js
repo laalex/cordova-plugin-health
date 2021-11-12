@@ -254,6 +254,7 @@ Health.prototype.query = function (opts, onSuccess, onError) {
             res.id = data[i].UUID
             res.startDate = new Date(data[i].startDate);
             res.endDate = new Date(data[i].endDate);
+            res.metadata = data[i].metadata;
             if (data[i].value == 0) res.value = 'sleep.inBed';
             else if (data[i].value == 1) res.value = 'sleep';
             else res.value = 'sleep.awake';
@@ -633,12 +634,14 @@ var convertToGrams = function (fromUnit, q) {
 
 // refactors the result of a quantity type query into returned type
 var prepareResult = function (data, unit) {
+  console.log(data);
   var res = {
     id: data.UUID,
     startDate: new Date(data.startDate),
     endDate: new Date(data.endDate),
     value: data.quantity,
-    unit: unit
+    unit: unit,
+    metadata: data.metadata
   };
   if (data.sourceName) res.sourceName = data.sourceName;
   if (data.sourceBundleId) res.sourceBundleId = data.sourceBundleId;
@@ -651,7 +654,8 @@ var prepareCorrelation = function (data, dataType) {
     id: data.UUID,
     startDate: new Date(data.startDate),
     endDate: new Date(data.endDate),
-    value: {}
+    value: {},
+    metadata: data.metadata,
   };
   if (data.sourceName) res.sourceName = data.sourceName;
   if (data.sourceBundleId) res.sourceBundleId = data.sourceBundleId;

@@ -1398,6 +1398,8 @@ static NSString *const HKPluginKeyUUID = @"UUID";
                                                                           NSDate *startSample = sample.startDate;
                                                                           NSDate *endSample = sample.endDate;
                                                                           NSMutableDictionary *entry = [NSMutableDictionary dictionary];
+                                                                          NSMutableDictionary *metadata = [NSMutableDictionary dictionary];
+
 
                                                                           // common indices
                                                                           entry[HKPluginKeyStartDate] =[HealthKit stringFromDate:startSample];
@@ -1419,8 +1421,14 @@ static NSString *const HKPluginKeyUUID = @"UUID";
 
                                                                               HKCategorySample *csample = (HKCategorySample *) sample;
                                                                               entry[HKPluginKeyValue] = @(csample.value);
-                                                                              entry[@"categoryType.identifier"] = csample.categoryType.identifier;
-                                                                              entry[@"categoryType.description"] = csample.categoryType.description;
+                                                                              metadata[@"identifier"] = csample.categoryType.identifier;
+                                                                              metadata[@"description"] = csample.categoryType.description;
+
+                                                                              if([csample.categoryType.identifier isEqual:HKCategoryTypeIdentifierHighHeartRateEvent] || [csample.categoryType.identifier isEqual:HKCategoryTypeIdentifierLowHeartRateEvent]){
+                                                                                  HKQuantity *thresholdValue = csample.metadata[HKMetadataKeyHeartRateEventThreshold];
+                                                                                  NSNumber *number = [NSNumber numberWithDouble:[thresholdValue doubleValueForUnit:[HKUnit unitFromString:@"count/min"]]];
+                                                                                  metadata[@"hearbeatThreshold"] = number;
+                                                                              }
 
                                                                           } else if ([sample isKindOfClass:[HKCorrelationType class]]) {
 
@@ -1437,6 +1445,8 @@ static NSString *const HKPluginKeyUUID = @"UUID";
                                                                               HKWorkout *wsample = (HKWorkout *) sample;
                                                                               [entry setValue:@(wsample.duration) forKey:@"duration"];
 
+                                                                          } else if([sample isKindOfClass:[HKCategoryTypeIdentifierLowHeartRateEvent class]]) {
+
                                                                           }
 
                                                                           if (@available(iOS 14.0, *)) {
@@ -1451,6 +1461,7 @@ static NSString *const HKPluginKeyUUID = @"UUID";
                                                                               // Fallback on earlier versions
                                                                           }
 
+                                                                          entry[@"metadata"] = metadata;
                                                                           [finalResults addObject:entry];
                                                                       }
 
@@ -1512,12 +1523,13 @@ static NSString *const HKPluginKeyUUID = @"UUID";
                                                                                           if ([sample isKindOfClass:[HKElectrocardiogram class]]) {
 
                                                                                               NSMutableDictionary *entry = [NSMutableDictionary dictionary];
-
+                                                                                              NSMutableDictionary *metadata = [NSMutableDictionary dictionary];
                                                                                               HKElectrocardiogram *esample = (HKElectrocardiogram *) sample;
 
-                                                                                              [entry setValue:@(esample.symptomsStatus) forKey:@"symptomsStatus"];
-                                                                                              [entry setValue:@(esample.classification) forKey:@"classification"];
-                                                                                              [entry setValue:@([esample.averageHeartRate doubleValueForUnit:[HKUnit unitFromString:@"count/min"]]) forKey:@"averageHeartRate"];
+                                                                                              metadata[@"symptomsStatus"] = @(esample.symptomsStatus);
+                                                                                              metadata[@"averageHeartRate"] = @([esample.averageHeartRate doubleValueForUnit:[HKUnit unitFromString:@"count/min"]]);
+                                                                                              metadata[@"classification"] = @(esample.classification);
+
 
                                                                                               NSMutableArray *ecgVoltageReadings = [[NSMutableArray alloc] initWithCapacity:esample.numberOfVoltageMeasurements];
 
@@ -1542,6 +1554,7 @@ static NSString *const HKPluginKeyUUID = @"UUID";
                                                                                                             [ecgVoltageReadings addObject:voltageReading];
 
                                                                                                         } else {
+                                                                                                            entry[@"metadata"] = metadata;
                                                                                                             [entry setValue:ecgVoltageReadings forKey:@"sampleVoltageReadings"];
                                                                                                             dispatch_sync(dispatch_get_main_queue(), ^{
                                                                                                                 CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:entry];
