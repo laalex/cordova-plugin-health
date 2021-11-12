@@ -297,6 +297,7 @@ Health.prototype.query = function (opts, onSuccess, onError) {
           res.id = samples[i].UUID
           res.startDate = new Date(samples[i].startDate);
           res.endDate = new Date(samples[i].endDate);
+          res.metadata = samples[i].metadata;
           if (opts.dataType === 'blood_glucose') {
             res.value = {
               glucose: samples[i].quantity
