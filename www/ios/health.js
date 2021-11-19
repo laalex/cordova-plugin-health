@@ -52,6 +52,7 @@ dataTypes['heartevents.lowrate'] = "HKCategoryTypeIdentifierLowHeartRateEvent";
 dataTypes['heartevents.highrate'] = "HKCategoryTypeIdentifierHighHeartRateEvent";
 dataTypes['heartevents.irregular'] = "HKCategoryTypeIdentifierIrregularHeartRhythmEvent";
 
+
 // for parseable units in HK, see https://developer.apple.com/documentation/healthkit/hkunit/1615733-unitfromstring?language=objc
 var units = [];
 units['steps'] = 'count';

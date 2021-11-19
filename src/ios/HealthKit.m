@@ -1546,7 +1546,7 @@ static NSString *const HKPluginKeyUUID = @"UUID";
 
                                                                                                             NSNumber *startTime = [NSNumber numberWithFloat:voltageMeasurement.timeSinceSampleStart];
                                                                                                             NSString *startTimeString = [startTime stringValue];
-                                                                                                            [voltageReading setValue:startTimeString forKey:@"name"];
+                                                                                                            [voltageReading setValue:startTimeString forKey:@"recordingTime"];
                                                                                                             NSNumber *voltageValueRaw = [NSNumber numberWithFloat:[voltageReadingQuantity doubleValueForUnit:[HKUnit unitFromString:@"mV"]]];
                                                                                                             double voltageValueDouble = [voltageValueRaw doubleValue];
                                                                                                             [voltageReading setValue:[NSNumber numberWithDouble:voltageValueDouble] forKey:@"value"];
