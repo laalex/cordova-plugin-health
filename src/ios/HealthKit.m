@@ -1529,6 +1529,8 @@ static NSString *const HKPluginKeyUUID = @"UUID";
                                                                                               metadata[@"symptomsStatus"] = @(esample.symptomsStatus);
                                                                                               metadata[@"averageHeartRate"] = @([esample.averageHeartRate doubleValueForUnit:[HKUnit unitFromString:@"count/min"]]);
                                                                                               metadata[@"classification"] = @(esample.classification);
+                                                                                              [metadata setValue:[NSNumber numberWithDouble:[esample.startDate timeIntervalSince1970]] forKey:@"startDate"];
+                                                                                              [metadata setValue:[NSNumber numberWithDouble:[esample.endDate timeIntervalSince1970]] forKey:@"endDate"];
 
 
                                                                                               NSMutableArray *ecgVoltageReadings = [[NSMutableArray alloc] initWithCapacity:esample.numberOfVoltageMeasurements];
